@@ -6,16 +6,15 @@ export default function BooksTab({ books, authors, getAuthorName, onBookCreated 
   const [showModal, setShowModal] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [selectedAuthorId, setSelectedAuthorId] = useState(
-    authors.length > 0 ? authors[0]._id : "",
-  );
+  const [selectedAuthorIds, setSelectedAuthorIds] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await apiCreateBook(title, description, [selectedAuthorId]);
+      await apiCreateBook(title, description, selectedAuthorIds);
       setTitle("");
       setDescription("");
+      setSelectedAuthorIds([]);
       setShowModal(false);
       onBookCreated();
     } catch (e) {
@@ -91,18 +90,30 @@ export default function BooksTab({ books, authors, getAuthorName, onBookCreated 
             required
             className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition"
           />
-          <select
-            value={selectedAuthorId}
-            onChange={(e) => setSelectedAuthorId(e.target.value)}
-            required
-            className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition bg-white"
-          >
-            {authors.map((a) => (
-              <option key={a._id} value={a._id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <fieldset className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm bg-white max-h-40 overflow-y-auto">
+            <legend className="text-xs text-gray-500 px-1">Authors (optional)</legend>
+            {authors.length === 0 ? (
+              <p className="text-gray-400 italic text-xs">No authors available</p>
+            ) : (
+              authors.map((a) => (
+                <label key={a._id} className="flex items-center gap-2 py-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedAuthorIds.includes(a._id)}
+                    onChange={(e) =>
+                      setSelectedAuthorIds((prev) =>
+                        e.target.checked
+                          ? [...prev, a._id]
+                          : prev.filter((id) => id !== a._id),
+                      )
+                    }
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-gray-700">{a.name}</span>
+                </label>
+              ))
+            )}
+          </fieldset>
           <button
             type="submit"
             className="rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 transition"

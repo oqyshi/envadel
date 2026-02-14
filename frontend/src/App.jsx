@@ -11,7 +11,10 @@ const TABS = [
 ];
 
 function App() {
-  const [activeTab, setActiveTab] = useState("search");
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.slice(1);
+    return TABS.some((t) => t.id === hash) ? hash : "search";
+  });
   const [authors, setAuthors] = useState([]);
   const [books, setBooks] = useState([]);
   const [reindexing, setReindexing] = useState(false);
@@ -114,7 +117,7 @@ function App() {
           {TABS.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => { setActiveTab(tab.id); window.location.hash = tab.id; }}
               className={`px-4 py-2.5 text-sm font-medium rounded-t-lg transition ${
                 activeTab === tab.id
                   ? "bg-white text-gray-900 border border-gray-200 border-b-white -mb-px"
