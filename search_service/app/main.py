@@ -78,6 +78,41 @@ async def search(query: str, index: str = "books"):
         return []
 
 
+@app.get("/search/all/")
+async def search_all(query: str):
+    es_query = {
+        "bool": {
+            "should": [
+                {
+                    "multi_match": {
+                        "query": query,
+                        "fields": ["title", "description", "name"],
+                        "fuzziness": "AUTO",
+                    }
+                },
+                {
+                    "query_string": {
+                        "query": f"*{query}*",
+                        "fields": ["title", "description", "name"],
+                    }
+                },
+            ],
+            "minimum_should_match": 1,
+        }
+    }
+
+    results = {"books": [], "authors": []}
+
+    for index in ("books", "authors"):
+        try:
+            response = await es_client.search(index=index, query=es_query)
+            results[index] = [hit["_source"] for hit in response["hits"]["hits"]]
+        except NotFoundError:
+            pass
+
+    return results
+
+
 @app.post("/reindex/")
 async def reindex():
     """Fetch all books and authors from Core Service and index them into Elasticsearch."""
