@@ -27,6 +27,7 @@ function App() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [reindexing, setReindexing] = useState(false);
 
   useEffect(() => {
     fetchAuthors();
@@ -94,6 +95,19 @@ function App() {
       setSearchResults(res.data);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleReindex = async () => {
+    setReindexing(true);
+    try {
+      const res = await axios.post(`${SEARCH_API}/reindex/`);
+      alert(`Reindex complete: ${res.data.indexed.books} books, ${res.data.indexed.authors} authors`);
+    } catch (e) {
+      console.error(e);
+      alert("Reindex failed");
+    } finally {
+      setReindexing(false);
     }
   };
 
@@ -370,9 +384,18 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Microservice Library
-        </h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Microservice Library
+          </h1>
+          <button
+            onClick={handleReindex}
+            disabled={reindexing}
+            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50 transition"
+          >
+            {reindexing ? "Reindexing..." : "Sync to Search"}
+          </button>
+        </div>
 
         <div className="flex flex-wrap gap-1 border-b border-gray-200">
           {TABS.map((tab) => (
