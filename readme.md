@@ -74,6 +74,50 @@ Once the system is running, you can access the following services:
 
 ---
 
+## 🧪 Testing
+
+Both backend services have unit and integration tests with coverage reporting.
+
+### Prerequisites
+
+```bash
+# Create a virtualenv and install dependencies (includes test deps)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r core_service/requirements.txt -r search_service/requirements.txt
+```
+
+### Unit Tests (no Docker required)
+
+```bash
+# Core Service — models, routes, Kafka producer
+cd core_service && pytest tests/unit -v
+cd ..
+
+# Search Service — search endpoints, reindex, Kafka consumer
+cd search_service && pytest tests/unit -v
+cd ..
+```
+
+### Integration Tests (requires running Docker stack)
+
+```bash
+docker compose up -d --build
+# Wait ~30s for all services to become healthy
+
+cd core_service && pytest tests/integration -v -m integration
+cd ..
+
+cd search_service && pytest tests/integration -v -m integration
+cd ..
+```
+
+### Coverage Report
+
+Coverage is collected automatically when running tests. After a test run, open `htmlcov/index.html` inside the respective service directory for a detailed HTML report.
+
+---
+
 ## ⚙️ Configuration
 
 The system is fully configurable via Environment Variables. See the `environment` section in `docker-compose.yml` to change database URLs or Kafka brokers without touching the source code.
