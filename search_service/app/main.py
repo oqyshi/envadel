@@ -1,34 +1,36 @@
 import asyncio
-from fastapi import FastAPI
 from contextlib import asynccontextmanager
+
+from elasticsearch import NotFoundError
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import es_client
 from app.kafka_consumer import consume_events
 
-from elasticsearch import NotFoundError
-from fastapi.middleware.cors import CORSMiddleware
-
 # Глобальная переменная для нашей фоновой задачи
 consumer_task = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global consumer_task
     print("🚀 Запуск Search Service...")
-    
+
     # Запускаем консьюмер в фоне
     consumer_task = asyncio.create_task(consume_events())
-    
+
     yield
-    
+
     print("🛑 Остановка Search Service...")
-    consumer_task.cancel()        # Отменяем задачу
-    await es_client.close()       # Закрываем соединение с Эластиком
+    consumer_task.cancel()  # Отменяем задачу
+    await es_client.close()  # Закрываем соединение с Эластиком
+
 
 app = FastAPI(
-    title="Search Service", 
+    title="Search Service",
     description="Сервис полнотекстового поиска",
-    lifespan=lifespan # <-- Вот эту строчку мы забыли!
+    lifespan=lifespan,  # <-- Вот эту строчку мы забыли!
 )
 
 app.add_middleware(
@@ -39,11 +41,10 @@ app.add_middleware(
     allow_headers=["*"],  # Разрешаем все заголовки
 )
 
+
 @app.get("/")
 async def root():
     return {"message": "Search Service готов искать!"}
-
-
 
 
 @app.get("/search/")
@@ -59,17 +60,17 @@ async def search(query: str, index: str = "books"):
                     "multi_match": {
                         "query": query,
                         "fields": ["title", "description", "name"],
-                        "fuzziness": "AUTO"
+                        "fuzziness": "AUTO",
                     }
                 },
                 {
                     "query_string": {
                         "query": f"*{query}*",
-                        "fields": ["title", "description", "name"]
+                        "fields": ["title", "description", "name"],
                     }
-                }
+                },
             ],
-            "minimum_should_match": 1
+            "minimum_should_match": 1,
         }
     }
 
@@ -77,8 +78,8 @@ async def search(query: str, index: str = "books"):
         response = await es_client.search(index=index, query=es_query)
         documents = [hit["_source"] for hit in response["hits"]["hits"]]
         return documents
-    
+
     except NotFoundError:
-        # Если индекса еще нет (ни одной книги не добавлено), 
+        # Если индекса еще нет (ни одной книги не добавлено),
         # просто возвращаем пустой список, а не роняем сервер!
         return []

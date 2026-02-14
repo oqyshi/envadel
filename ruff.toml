@@ -1,0 +1,26 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+  "E",     # pycodestyle errors
+  "W",     # pycodestyle warnings
+  "F",     # pyflakes
+  "I",     # isort (import sorting)
+  "N",     # pep8-naming
+  "UP",    # pyupgrade
+  "B",     # flake8-bugbear
+  "SIM",   # flake8-simplify
+  "RUF",   # ruff-specific rules
+]
+ignore = [
+  "E501",    # line too long (handled by formatter)
+  "RUF001",  # ambiguous unicode in strings (Cyrillic)
+  "RUF003",  # ambiguous unicode in comments (Cyrillic)
+]
+
+[lint.isort]
+known-first-party = ["app"]
+
+[format]
+quote-style = "double"
