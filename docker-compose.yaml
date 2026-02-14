@@ -1,0 +1,104 @@
+services:
+  # --- 1. БАЗА ДАННЫХ (MongoDB) ---
+  mongodb:
+    image: mongo:7.0
+    container_name: library_mongo
+    ports:
+      - "27017:27017" # Порт для подключения извне (например, через Compass)
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+
+  # --- 2. ПОИСКОВЫЙ ДВИЖОК (Elasticsearch) ---
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.0
+    container_name: library_elastic
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false # Выключаем пароли для удобной локальной разработки
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m" # Ограничиваем память, чтобы Docker не "упал"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elastic_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+
+  # --- 3. БРОКЕР СООБЩЕНИЙ (Kafka KRaft от Confluent) ---
+  kafka:
+    image: confluentinc/confluent-local:7.5.0
+    container_name: library_kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@localhost:9093"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk" # Обязательный параметр для старта KRaft
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    restart: unless-stopped
+
+  # --- 4. KAFKA UI (Веб-интерфейс) ---
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: library_kafka_ui
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092 # Внутренний порт для связи внутри Docker
+    depends_on:
+      - kafka
+  # --- 5. CORE SERVICE ---
+  # --- 5. CORE SERVICE ---
+  core-service:
+    build: ./core_service
+    container_name: library_core_service
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - mongodb
+      - kafka
+    restart: on-failure
+
+  # --- 6. SEARCH SERVICE ---
+  search-service:
+    build: ./search_service
+    container_name: library_search_service
+    ports:
+      - "8001:8000"
+    environment:
+      - ELASTIC_URL=http://elasticsearch:9200
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+    depends_on:
+      - elasticsearch
+      - kafka
+    restart: on-failure
+    # --- 7. FRONTEND ---
+  # --- 7. FRONTEND ---
+  frontend:
+    build:
+      context: ./frontend
+      # Передаем переменные на этапе СБОРКИ (build time),
+      # так как React собирается в статику и потом не может читать системный env
+      args:
+        - VITE_CORE_API_URL=http://localhost:8000
+        - VITE_SEARCH_API_URL=http://localhost:8001
+    container_name: library_frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - core-service
+      - search-service
+    restart: on-failure
+volumes:
+  mongo_data:
+  elastic_data:
+  kafka_data:
