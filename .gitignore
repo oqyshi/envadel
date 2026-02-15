@@ -16,5 +16,12 @@ venv/
 *.swo
 .DS_Store
 
+# Coverage
+.coverage
+htmlcov/
+
 # OS
 Thumbs.db
+
+# Docs
+*.pdf
